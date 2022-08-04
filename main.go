@@ -44,18 +44,18 @@ func isNice(s string) bool {
 		return true
 	}
 
-	//count = 0
-	//for i := length - 2; i > 0; i-- {
-	//	if s[i] == pin-1 {
-	//		count++
-	//		pin = s[i]
-	//	} else {
-	//		break
-	//	}
-	//}
-	//if count >= Nice {
-	//	return true
-	//}
+	count = 0
+	for i := length - 2; i > 0; i-- {
+		if s[i] == pin-1 {
+			count++
+			pin = s[i]
+		} else {
+			break
+		}
+	}
+	if count >= Nice {
+		return true
+	}
 	return false
 }
 

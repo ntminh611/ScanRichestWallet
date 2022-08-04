@@ -1,7 +1,6 @@
 package main
 
 import (
-	"./service"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -17,55 +16,57 @@ import (
 
 var eth map[string]string
 var btc map[string]string
+var wallet map[string]string
+var result map[string]string
 
 type Wallet struct {
 	publicKey, privateKey string
 }
 
-var tlBot = service.NewTelegramBot("523919774:AAEL5bsetD3yhIMpjgiQSvWFY9dfvs1ibAQ", -1001341233186)
+//var tlBot = service.NewTelegramBot("5378904643:AAHR48MZY1EwNeZlHhW076fsrsccyxzROtk", -1001341233186)
 
 func main() {
-	//"https://etherscan.io/accounts"
-	//"https://99bitcoins.com/bitcoin-rich-list-top1000/"
-
-	eth = make(map[string]string)
-	btc = make(map[string]string)
-
-	readFile("eth")
-	fmt.Println(len(eth))
-	if len(eth) <= 0 {
-		getEthWallets(1)
-		writeFile("eth")
-	}
-
-	//readFile("btc")
-	//fmt.Println(len(btc))
-	//if len(btc) <= 0{
-	//	getBtcWallets()
-	//	writeFile("btc")
-	//}
-
-	for i := 0; i < 4; i++ {
-		go func() {
-			for {
-				ethWallet := generateEthWallet()
-				if eth[ethWallet.publicKey] == "1" {
-					//log.Println(ethWallet)
-					fmt.Println(ethWallet)
-					//log.Println("public: " + ethWallet.publicKey +
-					//	" private: " + ethWallet.privateKey)
-					tlBot.SendMessage("public: " + ethWallet.publicKey +
-						" private: " + ethWallet.privateKey)
-				}
-			}
-		}()
-	}
-
+	wallet := make(map[string]string)
 	for {
-		fmt.Println("scan richest wallets Ping!")
-		//tlBot.SendMessage("scan richest wallets Ping!")
-		time.Sleep(30 * time.Minute)
+		ethWallet := generateEthWallet()
+		public := strings.ToLower(ethWallet.publicKey)
+		if isNice(public) {
+			wallet[public] = ethWallet.privateKey
+			writeFile("wallet")
+		}
 	}
+}
+
+const Nice = 6
+
+func isNice(s string) bool {
+	length := len(s)
+	count := 0
+	pin := s[length-1]
+	for i := length - 2; i > 0; i-- {
+		if s[i] == pin {
+			count++
+		} else {
+			break
+		}
+	}
+	if count >= Nice {
+		return true
+	}
+
+	//count = 0
+	//for i := length - 2; i > 0; i-- {
+	//	if s[i] == pin-1 {
+	//		count++
+	//		pin = s[i]
+	//	} else {
+	//		break
+	//	}
+	//}
+	//if count >= Nice {
+	//	return true
+	//}
+	return false
 }
 
 func generateEthWallet() Wallet {
@@ -77,7 +78,7 @@ func generateEthWallet() Wallet {
 
 func getEthWallets(page int) {
 	fmt.Println(page)
-	res, err := http.Get(fmt.Sprintf("https://etherscan.io/accounts/%d?", page))
+	res, err := http.Get(fmt.Sprintf("https://etherscan.io/accounts/%d?ps=100", page))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -95,6 +96,7 @@ func getEthWallets(page int) {
 
 	_, bool := doc.Find(`.pagination [title='Go to Next'] a`).First().Attr("href")
 	if bool {
+		time.Sleep(time.Second)
 		getEthWallets(page + 1)
 	}
 }
@@ -102,17 +104,20 @@ func getEthWallets(page int) {
 func writeFile(name string) {
 	var jsonData []byte
 	var err error
-	if name == "eth" {
+	switch name {
+	case "eth":
 		jsonData, err = json.Marshal(eth)
-	} else {
+	case "btc":
 		jsonData, err = json.Marshal(btc)
+	case "wallet":
+		jsonData, err = json.Marshal(wallet)
+	case "result":
+		jsonData, err = json.Marshal(result)
 	}
 
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(string(jsonData))
 
 	jsonFile, err := os.Create(fmt.Sprintf("./%s.json", name))
 
@@ -123,7 +128,6 @@ func writeFile(name string) {
 
 	jsonFile.Write(jsonData)
 	jsonFile.Close()
-	fmt.Println("JSON data written to ", jsonFile.Name())
 }
 
 func readFile(name string) {
@@ -136,9 +140,14 @@ func readFile(name string) {
 
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 
-	if name == "eth" {
-		json.Unmarshal([]byte(byteValue), &eth)
-	} else {
-		json.Unmarshal([]byte(byteValue), &btc)
+	switch name {
+	case "eth":
+		json.Unmarshal(byteValue, &eth)
+	case "btc":
+		json.Unmarshal(byteValue, &btc)
+	case "wallet":
+		json.Unmarshal(byteValue, &wallet)
+	case "result":
+		json.Unmarshal(byteValue, &result)
 	}
 }
